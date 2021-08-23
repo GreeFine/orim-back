@@ -1,28 +1,15 @@
 {
-  "version": "1",
-  "actions": [
+  "version": 1,
+  "object_update": [
     {
-      "type": 0,
+      "type": "Delete",
       "reference": [
         110,
         111
       ],
-      "arguments": [
+      "states": [
         "[0,0,0,0]",
         "[1,1,1,1]"
-      ]
-    },
-    {
-      "type": 1,
-      "reference": [
-        110,
-        111
-      ],
-      "arguments": [
-        "0",
-        "255",
-        "0",
-        "255"
       ]
     }
   ]
