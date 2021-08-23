@@ -1,6 +1,6 @@
 [package]
-name = "ormi-back"
-version = "0.1.0"
+name = "orim-back"
+version = "0.1.1"
 authors = ["GreeFine <raphael@blackfoot.io>"]
 edition = "2018"
 
