@@ -1,3 +1,4 @@
+use protocol::Object;
 use std::{collections::HashMap, convert::Infallible, sync::Arc};
 use tokio::sync::{mpsc, Mutex};
 use warp::{ws::Message, Filter, Rejection};
@@ -5,6 +6,7 @@ use warp::{ws::Message, Filter, Rejection};
 use crate::rejection::handle_rejection;
 
 mod handlers;
+mod protocol;
 mod rejection;
 mod ws;
 
@@ -14,14 +16,15 @@ pub struct Client {
     pub sender: Option<mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Room {
     pub room_id: String,
     pub name: String,
     pub clients: Vec<Client>,
+    pub objects: Vec<Object>,
 }
 
-type Rooms = Arc<Mutex<HashMap<String, Room>>>;
+type Rooms = Arc<Mutex<HashMap<String, Arc<Mutex<Room>>>>>;
 type Result<T> = std::result::Result<T, Rejection>;
 
 #[tokio::main]

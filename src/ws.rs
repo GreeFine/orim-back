@@ -1,6 +1,8 @@
-use crate::{Client, Rooms};
+use std::sync::Arc;
+
+use crate::{protocol, Client, Room, Rooms};
 use futures::{FutureExt, StreamExt};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Mutex};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 use warp::ws::{Message, WebSocket};
@@ -26,29 +28,31 @@ pub async fn client_connection(ws: WebSocket, rooms: Rooms, room_id: String) {
         sender: Some(client_sender.clone()),
     };
 
-    rooms
-        .lock()
-        .await
-        .get_mut(&room_id)
-        .unwrap()
-        .clients
-        .push(new_client);
+    let client_room = rooms.lock().await.get_mut(&room_id).unwrap().clone();
+    client_room.lock().await.clients.push(new_client);
     let _ = client_sender.send(Ok(Message::text(format!("[{}] Connected", room_id))));
 
     while let Some(result) = client_ws_rcv.next().await {
         let msg = match result {
-            Ok(msg) => msg,
+            Ok(msg) => {
+                println!("received message from {}", uuid);
+                msg
+            }
             Err(e) => {
                 println!("error receiving message for id {}): {}", uuid.clone(), e);
                 break;
             }
         };
-        client_msg(&uuid, msg, &rooms).await;
+        let message = match msg.to_str() {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+
+        protocol::receive(&uuid, &client_room, message);
     }
 
     {
-        let mut rooms_lock = rooms.lock().await;
-        let room_clients = &mut rooms_lock.get_mut(&room_id).unwrap().clients;
+        let room_clients = &mut client_room.lock().await.clients;
         let index = room_clients
             .iter()
             .position(|c| c.client_id == uuid)
@@ -59,21 +63,7 @@ pub async fn client_connection(ws: WebSocket, rooms: Rooms, room_id: String) {
     println!("{} disconnected", uuid);
 }
 
-async fn client_msg(client_id: &str, msg: Message, rooms: &Rooms) {
-    println!("received message from {}: {:?}", client_id, msg);
-
-    let message = match msg.to_str() {
-        Ok(v) => v,
-        Err(_) => return,
-    };
-
-    let rooms_lock = rooms.lock().await;
-    let room_of_client = &rooms_lock
-        .iter()
-        .find(|(_, room)| room.clients.iter().any(|c| c.client_id == client_id))
-        .unwrap()
-        .1;
-
+async fn broadcast(client_id: &str, message: &str, room_of_client: &Room) {
     for client in &room_of_client.clients {
         if client.client_id != client_id {
             if let Some(sender) = &client.sender {
@@ -88,5 +78,4 @@ async fn client_msg(client_id: &str, msg: Message, rooms: &Rooms) {
             }
         }
     }
-    return;
 }
