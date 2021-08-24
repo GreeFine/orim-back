@@ -19,6 +19,7 @@ enum ActionType {
     Delete,
     Lock,
     Unlock,
+    Broadcast,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -54,6 +55,7 @@ pub fn process_actions<'a>(
 ) -> Result<Vec<ObjectUpdate>, ErrorWS<'a>> {
     for object_update in &message_json.object_update {
         match object_update.r#type {
+            ActionType::Broadcast => Ok(()),
             ActionType::Delete => action_delete(object_update, room),
             ActionType::Update => todo!(),
             ActionType::Lock => todo!(),
